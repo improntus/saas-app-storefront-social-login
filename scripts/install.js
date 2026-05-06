@@ -110,6 +110,18 @@ function patchCommerceLogin() {
   let content = readText(filePath);
   let changed = false;
 
+  const loadCssImportLine = "import { loadCSS } from '../../scripts/aem.js';";
+  if (!content.includes(loadCssImportLine)) {
+    const loadCssImportAnchor = "import { render as authRenderer } from '@dropins/storefront-auth/render.js';";
+    const patchedWithLoadCssImport = insertAfter(content, loadCssImportAnchor, `\n${loadCssImportLine}`);
+    if (patchedWithLoadCssImport) {
+      content = patchedWithLoadCssImport;
+      changed = true;
+    } else {
+      REPORT.manual.push(`Add \`${loadCssImportLine}\` to \`${COMMERCE_LOGIN_REL_PATH}\`.`);
+    }
+  }
+
   const importLine = "import { mountImprontusSocialLogin } from '../improntus-social-login/improntus-social-login.js';";
   if (!content.includes(importLine)) {
     const importAnchor = "import {\n  CUSTOMER_ACCOUNT_PATH,\n  CUSTOMER_FORGOTPASSWORD_PATH,\n  checkIsAuthenticated,\n  rootLink,\n} from '../../scripts/commerce.js';";
@@ -119,6 +131,21 @@ function patchCommerceLogin() {
       changed = true;
     } else {
       REPORT.manual.push(`Add \`${importLine}\` to \`${COMMERCE_LOGIN_REL_PATH}\`.`);
+    }
+  }
+
+  if (!content.includes("loadCSS('/blocks/improntus-social-login/improntus-social-login.css').catch(() => {});")) {
+    const signInRenderNeedle = `    await authRenderer.render(SignIn, {\n      routeForgotPassword: () => rootLink(CUSTOMER_FORGOTPASSWORD_PATH),\n      routeRedirectOnSignIn: () => rootLink(CUSTOMER_ACCOUNT_PATH),\n    })(block);`;
+    const patchedWithCssLoad = insertAfter(
+      content,
+      signInRenderNeedle,
+      "\n    loadCSS('/blocks/improntus-social-login/improntus-social-login.css').catch(() => {});",
+    );
+    if (patchedWithCssLoad) {
+      content = patchedWithCssLoad;
+      changed = true;
+    } else {
+      REPORT.manual.push(`Add CSS load for social login after SignIn render in \`${COMMERCE_LOGIN_REL_PATH}\`.`);
     }
   }
 
