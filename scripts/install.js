@@ -24,6 +24,8 @@ function resolveHostProjectRoot() {
 const PROJECT_ROOT = resolveHostProjectRoot();
 const BLOCK_REL_PATH = 'blocks/improntus-social-login';
 const COMMERCE_LOGIN_REL_PATH = 'blocks/commerce-login/commerce-login.js';
+const HEADER_AUTH_DROPDOWN_REL_PATH = 'blocks/header/renderAuthDropdown.js';
+const HEADER_AUTH_COMBINE_REL_PATH = 'blocks/header/renderAuthCombine.js';
 
 const REPORT = {
   patched: [],
@@ -66,6 +68,11 @@ function copyDirRecursive(srcDir, destDir) {
 function insertAfter(content, needle, insertion) {
   if (!content.includes(needle)) return null;
   return content.replace(needle, `${needle}${insertion}`);
+}
+
+function insertBefore(content, needle, insertion) {
+  if (!content.includes(needle)) return null;
+  return content.replace(needle, `${insertion}${needle}`);
 }
 
 function askQuestion(question) {
@@ -131,6 +138,105 @@ function patchCommerceLogin() {
     REPORT.patched.push(`${COMMERCE_LOGIN_REL_PATH}: injected social login import and mount call`);
   } else {
     REPORT.skipped.push(`${COMMERCE_LOGIN_REL_PATH} (already patched or requires manual merge)`);
+  }
+}
+
+function patchHeaderRenderAuthDropdown() {
+  const relPath = HEADER_AUTH_DROPDOWN_REL_PATH;
+  const filePath = path.join(PROJECT_ROOT, relPath);
+  if (!fs.existsSync(filePath)) {
+    REPORT.skipped.push(`${relPath} (missing)`);
+    REPORT.manual.push(`Integrate social login rendering in \`${relPath}\`.`);
+    return;
+  }
+
+  let content = readText(filePath);
+  let changed = false;
+
+  const importLine = "import { renderImprontusSocialLogin } from '../improntus-social-login/improntus-social-login.js';";
+  if (!content.includes(importLine)) {
+    const importAnchor = "import { loadCSS } from '../../scripts/aem.js';";
+    const patchedWithImport = insertAfter(content, importAnchor, `\n${importLine}`);
+    if (patchedWithImport) {
+      content = patchedWithImport;
+      changed = true;
+    } else {
+      REPORT.manual.push(`Add \`${importLine}\` to \`${relPath}\`.`);
+    }
+  }
+
+  const mountHelper = `\n  loadCSS('/blocks/improntus-social-login/improntus-social-login.css').catch(() => {});\n\n  const mountImprontusSocialLogin = () => {\n    const signInButtons = element.querySelector('.auth-sign-in-form__form__buttons');\n    const signInContainer = signInButtons?.parentElement;\n\n    if (!signInContainer) return false;\n    if (signInContainer.querySelector('.improntus-social-login')) return true;\n\n    renderImprontusSocialLogin(signInContainer);\n    return true;\n  };\n`;
+  if (!content.includes("const mountImprontusSocialLogin = () => {")) {
+    const functionAnchor = 'function renderSignIn(element) {\n';
+    const patchedWithMountHelper = insertAfter(content, functionAnchor, mountHelper);
+    if (patchedWithMountHelper) {
+      content = patchedWithMountHelper;
+      changed = true;
+    } else {
+      REPORT.manual.push(`Add social login mount helper inside \`renderSignIn\` in \`${relPath}\`.`);
+    }
+  }
+
+  if (changed) {
+    writeText(filePath, content);
+    REPORT.patched.push(`${relPath}: injected social login import and SignIn mount helper`);
+  } else {
+    REPORT.skipped.push(`${relPath} (already patched or requires manual merge)`);
+  }
+}
+
+function patchHeaderRenderAuthCombine() {
+  const relPath = HEADER_AUTH_COMBINE_REL_PATH;
+  const filePath = path.join(PROJECT_ROOT, relPath);
+  if (!fs.existsSync(filePath)) {
+    REPORT.skipped.push(`${relPath} (missing)`);
+    REPORT.manual.push(`Integrate social login rendering in \`${relPath}\`.`);
+    return;
+  }
+
+  let content = readText(filePath);
+  let changed = false;
+
+  const importLine = "import { renderImprontusSocialLogin } from '../improntus-social-login/improntus-social-login.js';";
+  if (!content.includes(importLine)) {
+    const importAnchor = "import { loadCSS } from '../../scripts/aem.js';";
+    const patchedWithImport = insertAfter(content, importAnchor, `\n${importLine}`);
+    if (patchedWithImport) {
+      content = patchedWithImport;
+      changed = true;
+    } else {
+      REPORT.manual.push(`Add \`${importLine}\` to \`${relPath}\`.`);
+    }
+  }
+
+  const mountFunction = `function mountImprontusSocialLogin(signInFormRoot) {\n  if (!signInFormRoot) return;\n\n  loadCSS('/blocks/improntus-social-login/improntus-social-login.css').catch(() => {});\n\n  const tryMount = () => {\n    const signInButtons = signInFormRoot.querySelector('.auth-sign-in-form__form__buttons');\n    const signInContainer = signInButtons?.parentElement;\n    if (!signInContainer) return false;\n    if (signInContainer.querySelector('.improntus-social-login')) return true;\n\n    renderImprontusSocialLogin(signInContainer);\n    return true;\n  };\n\n  const observer = new MutationObserver(() => {\n    if (!document.body.contains(signInFormRoot)) {\n      observer.disconnect();\n      return;\n    }\n    tryMount();\n  });\n\n  observer.observe(signInFormRoot, {\n    childList: true,\n    subtree: true,\n  });\n\n  tryMount();\n}\n\n`;
+  if (!content.includes('function mountImprontusSocialLogin(signInFormRoot) {')) {
+    const mountFunctionAnchor = 'const onHeaderLinkClick = (element) => {\n';
+    const patchedWithMountFunction = insertBefore(content, mountFunctionAnchor, mountFunction);
+    if (patchedWithMountFunction) {
+      content = patchedWithMountFunction;
+      changed = true;
+    } else {
+      REPORT.manual.push(`Add \`mountImprontusSocialLogin(signInFormRoot)\` helper in \`${relPath}\`.`);
+    }
+  }
+
+  if (!content.includes('mountImprontusSocialLogin(signInForm);')) {
+    const renderNeedle = `  authRenderer.render(AuthCombine, {\n    signInFormConfig,\n    signUpFormConfig,\n    resetPasswordFormConfig,\n  })(signInForm);`;
+    const patchedWithCall = insertAfter(content, renderNeedle, '\n\n  mountImprontusSocialLogin(signInForm);');
+    if (patchedWithCall) {
+      content = patchedWithCall;
+      changed = true;
+    } else {
+      REPORT.manual.push(`Call \`mountImprontusSocialLogin(signInForm);\` after AuthCombine render in \`${relPath}\`.`);
+    }
+  }
+
+  if (changed) {
+    writeText(filePath, content);
+    REPORT.patched.push(`${relPath}: injected social login import, helper, and mount call`);
+  } else {
+    REPORT.skipped.push(`${relPath} (already patched or requires manual merge)`);
   }
 }
 
@@ -209,6 +315,8 @@ function printReport() {
 async function main() {
   copyAssets();
   patchCommerceLogin();
+  patchHeaderRenderAuthDropdown();
+  patchHeaderRenderAuthCombine();
   await promptAndUpdateConfig();
   printReport();
 }
