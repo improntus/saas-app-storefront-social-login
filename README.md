@@ -175,3 +175,7 @@ If the browser blocks popups, the flow falls back to full-page navigation to the
 - `improntus-social-login.css` - Section, button, and icon styles.
 - `images/facebook-logo.svg` - Facebook icon.
 - `images/google-logo.svg` - Google icon.
+
+## Author
+
+[![N|Solid](https://improntus.com/wp-content/uploads/2022/05/Logo-Site.png)](https://www.improntus.com)
