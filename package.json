@@ -1,0 +1,39 @@
+{
+  "name": "@improntus/saas-app-storefront-social-login",
+  "version": "1.0.0",
+  "description": "Social login block integration for Adobe Commerce dropins storefronts on AEM Edge Delivery Services.",
+  "author": "Improntus Team <mauro@improntus.com>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/improntus/saas-app-storefront-social-login.git"
+  },
+  "bugs": {
+    "url": "https://github.com/improntus/saas-app-storefront-social-login/issues"
+  },
+  "homepage": "https://github.com/improntus/saas-app-storefront-social-login#readme",
+  "keywords": [
+    "aem",
+    "adobe-commerce",
+    "edge-delivery-services",
+    "social-login",
+    "adobe-commerce-saas",
+    "improntus"
+  ],
+  "files": [
+    "assets",
+    "bin",
+    "scripts",
+    "README.md"
+  ],
+  "bin": {
+    "storefront-social-login-install": "bin/storefront-social-login-install.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install.js",
+    "prepublishOnly": "node -e \"const fs=require('fs');['bin/storefront-social-login-install.js','scripts/install.js'].forEach(f=>{try{fs.chmodSync(f,0o755)}catch(e){}})\""
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

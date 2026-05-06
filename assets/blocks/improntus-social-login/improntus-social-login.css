@@ -1,0 +1,95 @@
+.improntus-social-login {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e6e6e6;
+}
+
+.improntus-social-login__title {
+  margin: 0 0 14px;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.25;
+  color: #8c8c8c;
+  text-align: center;
+}
+
+.improntus-social-login__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(18px * 0.8);
+}
+
+/* Una sola red social: el boton ocupa todo el ancho del contenedor */
+.improntus-social-login__actions > .improntus-social-login__button:only-child {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.improntus-social-login__button {
+  min-height: calc(82px * 0.8 * 0.9);
+  margin: 0;
+  padding: calc(14px * 0.8 * 0.9) calc(18px * 0.8);
+  border: 1px solid #9f9f9f;
+  border-radius: 0;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(10px * 0.8);
+  cursor: pointer;
+}
+
+.improntus-social-login__button:hover,
+.improntus-social-login__button:focus-visible {
+  background: #f8f8f8;
+}
+
+.improntus-social-login__button.is-loading {
+  opacity: 0.75;
+  cursor: progress;
+}
+
+.improntus-social-login__button:disabled {
+  opacity: 0.75;
+  cursor: progress;
+}
+
+.improntus-social-login__button--facebook {
+  border-color: #7590e6;
+}
+
+.improntus-social-login__text {
+  font-size: calc(2rem * 0.8 * 1.2);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0;
+  color: #8a8a8a;
+}
+
+.improntus-social-login__button--facebook .improntus-social-login__text {
+  color: #7590e6;
+}
+
+.improntus-social-login__icon {
+  width: calc(22px * 0.8 * 1.2);
+  height: calc(22px * 0.8 * 1.2);
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .improntus-social-login__title {
+    font-size: 16px;
+  }
+
+  .improntus-social-login__text {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 680px) {
+  .improntus-social-login__actions {
+    grid-template-columns: 1fr;
+  }
+}
