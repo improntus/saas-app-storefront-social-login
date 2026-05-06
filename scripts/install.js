@@ -70,11 +70,6 @@ function insertAfter(content, needle, insertion) {
   return content.replace(needle, `${needle}${insertion}`);
 }
 
-function insertBefore(content, needle, insertion) {
-  if (!content.includes(needle)) return null;
-  return content.replace(needle, `${insertion}${needle}`);
-}
-
 function askQuestion(question) {
   return new Promise((resolve) => {
     const rl = readline.createInterface({
@@ -110,18 +105,6 @@ function patchCommerceLogin() {
   let content = readText(filePath);
   let changed = false;
 
-  const loadCssImportLine = "import { loadCSS } from '../../scripts/aem.js';";
-  if (!content.includes(loadCssImportLine)) {
-    const loadCssImportAnchor = "import { render as authRenderer } from '@dropins/storefront-auth/render.js';";
-    const patchedWithLoadCssImport = insertAfter(content, loadCssImportAnchor, `\n${loadCssImportLine}`);
-    if (patchedWithLoadCssImport) {
-      content = patchedWithLoadCssImport;
-      changed = true;
-    } else {
-      REPORT.manual.push(`Add \`${loadCssImportLine}\` to \`${COMMERCE_LOGIN_REL_PATH}\`.`);
-    }
-  }
-
   const importLine = "import { mountImprontusSocialLogin } from '../improntus-social-login/improntus-social-login.js';";
   if (!content.includes(importLine)) {
     const importAnchor = "import {\n  CUSTOMER_ACCOUNT_PATH,\n  CUSTOMER_FORGOTPASSWORD_PATH,\n  checkIsAuthenticated,\n  rootLink,\n} from '../../scripts/commerce.js';";
@@ -131,21 +114,6 @@ function patchCommerceLogin() {
       changed = true;
     } else {
       REPORT.manual.push(`Add \`${importLine}\` to \`${COMMERCE_LOGIN_REL_PATH}\`.`);
-    }
-  }
-
-  if (!content.includes("loadCSS('/blocks/improntus-social-login/improntus-social-login.css').catch(() => {});")) {
-    const signInRenderNeedle = `    await authRenderer.render(SignIn, {\n      routeForgotPassword: () => rootLink(CUSTOMER_FORGOTPASSWORD_PATH),\n      routeRedirectOnSignIn: () => rootLink(CUSTOMER_ACCOUNT_PATH),\n    })(block);`;
-    const patchedWithCssLoad = insertAfter(
-      content,
-      signInRenderNeedle,
-      "\n    loadCSS('/blocks/improntus-social-login/improntus-social-login.css').catch(() => {});",
-    );
-    if (patchedWithCssLoad) {
-      content = patchedWithCssLoad;
-      changed = true;
-    } else {
-      REPORT.manual.push(`Add CSS load for social login after SignIn render in \`${COMMERCE_LOGIN_REL_PATH}\`.`);
     }
   }
 
@@ -180,9 +148,14 @@ function patchHeaderRenderAuthDropdown() {
   let content = readText(filePath);
   let changed = false;
 
-  const importLine = "import { renderImprontusSocialLogin } from '../improntus-social-login/improntus-social-login.js';";
+  const previousImportLine = "import { renderImprontusSocialLogin } from '../improntus-social-login/improntus-social-login.js';";
+  const importLine = "import { mountImprontusSocialLogin } from '../improntus-social-login/improntus-social-login.js';";
+  if (content.includes(previousImportLine)) {
+    content = content.replace(previousImportLine, importLine);
+    changed = true;
+  }
   if (!content.includes(importLine)) {
-    const importAnchor = "import { loadCSS } from '../../scripts/aem.js';";
+    const importAnchor = "import { SignIn } from '@dropins/storefront-auth/containers/SignIn.js';";
     const patchedWithImport = insertAfter(content, importAnchor, `\n${importLine}`);
     if (patchedWithImport) {
       content = patchedWithImport;
@@ -192,21 +165,20 @@ function patchHeaderRenderAuthDropdown() {
     }
   }
 
-  const mountHelper = `\n  loadCSS('/blocks/improntus-social-login/improntus-social-login.css').catch(() => {});\n\n  const mountImprontusSocialLogin = () => {\n    const signInButtons = element.querySelector('.auth-sign-in-form__form__buttons');\n    const signInContainer = signInButtons?.parentElement;\n\n    if (!signInContainer) return false;\n    if (signInContainer.querySelector('.improntus-social-login')) return true;\n\n    renderImprontusSocialLogin(signInContainer);\n    return true;\n  };\n`;
-  if (!content.includes("const mountImprontusSocialLogin = () => {")) {
-    const functionAnchor = 'function renderSignIn(element) {\n';
-    const patchedWithMountHelper = insertAfter(content, functionAnchor, mountHelper);
-    if (patchedWithMountHelper) {
-      content = patchedWithMountHelper;
+  if (!content.includes('mountImprontusSocialLogin(element);')) {
+    const signInRenderNeedle = `  authRenderer.render(SignIn, {\n    onSuccessCallback: () => {\n      // reload the page\n      window.location.reload();\n    },\n    formSize: 'small',\n    routeForgotPassword: () => rootLink(CUSTOMER_FORGOTPASSWORD_PATH),\n  })(element);`;
+    const patchedWithMountCall = insertAfter(content, signInRenderNeedle, '\n  mountImprontusSocialLogin(element);');
+    if (patchedWithMountCall) {
+      content = patchedWithMountCall;
       changed = true;
     } else {
-      REPORT.manual.push(`Add social login mount helper inside \`renderSignIn\` in \`${relPath}\`.`);
+      REPORT.manual.push(`Call \`mountImprontusSocialLogin(element);\` after SignIn render in \`${relPath}\`.`);
     }
   }
 
   if (changed) {
     writeText(filePath, content);
-    REPORT.patched.push(`${relPath}: injected social login import and SignIn mount helper`);
+    REPORT.patched.push(`${relPath}: injected social login mount import and call`);
   } else {
     REPORT.skipped.push(`${relPath} (already patched or requires manual merge)`);
   }
@@ -224,27 +196,20 @@ function patchHeaderRenderAuthCombine() {
   let content = readText(filePath);
   let changed = false;
 
-  const importLine = "import { renderImprontusSocialLogin } from '../improntus-social-login/improntus-social-login.js';";
+  const previousImportLine = "import { renderImprontusSocialLogin } from '../improntus-social-login/improntus-social-login.js';";
+  const importLine = "import { mountImprontusSocialLogin } from '../improntus-social-login/improntus-social-login.js';";
+  if (content.includes(previousImportLine)) {
+    content = content.replace(previousImportLine, importLine);
+    changed = true;
+  }
   if (!content.includes(importLine)) {
-    const importAnchor = "import { loadCSS } from '../../scripts/aem.js';";
+    const importAnchor = "import { Button, provider as UI } from '@dropins/tools/components.js';";
     const patchedWithImport = insertAfter(content, importAnchor, `\n${importLine}`);
     if (patchedWithImport) {
       content = patchedWithImport;
       changed = true;
     } else {
       REPORT.manual.push(`Add \`${importLine}\` to \`${relPath}\`.`);
-    }
-  }
-
-  const mountFunction = `function mountImprontusSocialLogin(signInFormRoot) {\n  if (!signInFormRoot) return;\n\n  loadCSS('/blocks/improntus-social-login/improntus-social-login.css').catch(() => {});\n\n  const tryMount = () => {\n    const signInButtons = signInFormRoot.querySelector('.auth-sign-in-form__form__buttons');\n    const signInContainer = signInButtons?.parentElement;\n    if (!signInContainer) return false;\n    if (signInContainer.querySelector('.improntus-social-login')) return true;\n\n    renderImprontusSocialLogin(signInContainer);\n    return true;\n  };\n\n  const observer = new MutationObserver(() => {\n    if (!document.body.contains(signInFormRoot)) {\n      observer.disconnect();\n      return;\n    }\n    tryMount();\n  });\n\n  observer.observe(signInFormRoot, {\n    childList: true,\n    subtree: true,\n  });\n\n  tryMount();\n}\n\n`;
-  if (!content.includes('function mountImprontusSocialLogin(signInFormRoot) {')) {
-    const mountFunctionAnchor = 'const onHeaderLinkClick = (element) => {\n';
-    const patchedWithMountFunction = insertBefore(content, mountFunctionAnchor, mountFunction);
-    if (patchedWithMountFunction) {
-      content = patchedWithMountFunction;
-      changed = true;
-    } else {
-      REPORT.manual.push(`Add \`mountImprontusSocialLogin(signInFormRoot)\` helper in \`${relPath}\`.`);
     }
   }
 
