@@ -1,6 +1,6 @@
 {
   "name": "@improntus/saas-app-storefront-social-login",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Social login block integration for Adobe Commerce dropins storefronts on AEM Edge Delivery Services.",
   "author": "Improntus Team <mauro@improntus.com>",
   "license": "Apache-2.0",
